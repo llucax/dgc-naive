@@ -1,4 +1,4 @@
-# Makefile to build the garbage collector D library for Posix
+# Makefile to build the garbage collector D library for LDC
 # Designed to work with GNU make
 # Targets:
 #	make
@@ -10,8 +10,10 @@
 #	make clean
 #		Delete unneeded files created by build process
 
-LIB_TARGET=libtango-gc-naive.a
-LIB_MASK=libtango-gc-naive*.a
+LIB_TARGET_BC=libtango-gc-naive-bc.a
+LIB_TARGET_NATIVE=libtango-gc-naive.a
+LIB_TARGET_SHARED=libtango-gc-naive-shared.so
+LIB_MASK=libtango-gc-naive*.*
 
 CP=cp -f
 RM=rm -f
@@ -23,16 +25,20 @@ ADD_DFLAGS=
 #CFLAGS=-O3 $(ADD_CFLAGS)
 CFLAGS=$(ADD_CFLAGS)
 
-#DFLAGS=-release -O3 -inline -w $(ADD_DFLAGS)
-DFLAGS=$(ADD_DFLAGS)
+#DFLAGS=-release -O3 -inline -w -nofloat $(ADD_DFLAGS)
+DFLAGS=-w -disable-invariants $(ADD_DFLAGS)
 
-#TFLAGS=-O3 -inline $(ADD_DFLAGS)
-TFLAGS=$(ADD_DFLAGS)
+#TFLAGS=-O3 -inline -w -nofloat $(ADD_DFLAGS)
+TFLAGS=-w -disable-invariants $(ADD_DFLAGS)
 
 DOCFLAGS=-version=DDoc
 
 CC=gcc
 LC=llvm-ar rsv
+LCC=llc
+LLINK=llvm-link
+CLC=ar rsv
+LD=llvm-ld
 DC=ldc
 
 LIB_DEST=..
@@ -51,27 +57,36 @@ LIB_DEST=..
 .cpp.o:
 	g++ -c $(CFLAGS) $< -o$@
 
-.d.bc:
-	$(DC) -c $(DFLAGS) $< -of$@
+.d.o:
+	$(DC) -c $(DFLAGS) $< -of$@ -output-bc
 
 .d.html:
 	$(DC) -c -o- $(DOCFLAGS) -Df$*.html $<
 #	$(DC) -c -o- $(DOCFLAGS) -Df$*.html dmd.ddoc $<
 
-targets : lib doc
-all     : lib doc
-lib     : naive.lib
+targets : lib sharedlib doc
+all     : lib sharedlib doc
+lib     : naive.lib naive.nlib
+sharedlib : naive.sharedlib
 doc     : naive.doc
 
 ######################################################
 
-ALL_OBJS= \
-    gc.bc \
-    list.bc \
-    cell.d \
-    dynarray.d \
-    arch.d \
-    iface.d
+ALL_OBJS_BC= \
+    gc/iface.bc \
+    gc/gc.bc \
+    gc/arch.bc \
+    gc/list.bc \
+    gc/cell.bc \
+    gc/dynarray.bc
+
+ALL_OBJS_O= \
+    gc/iface.o \
+    gc/gc.o \
+    gc/arch.o \
+    gc/list.o \
+    gc/cell.o \
+    gc/dynarray.o
 
 ######################################################
 
@@ -79,11 +94,23 @@ ALL_DOCS=
 
 ######################################################
 
-naive.lib : $(LIB_TARGET)
+naive.lib : $(LIB_TARGET_BC)
+naive.nlib : $(LIB_TARGET_NATIVE)
+naive.sharedlib : $(LIB_TARGET_SHARED)
 
-$(LIB_TARGET) : $(ALL_OBJS)
+$(LIB_TARGET_BC) : $(ALL_OBJS_O)
 	$(RM) $@
-	$(LC) $@ $(ALL_OBJS)
+	$(LC) $@ $(ALL_OBJS_BC)
+
+
+$(LIB_TARGET_NATIVE) : $(ALL_OBJS_O)
+	$(RM) $@
+	$(CLC) $@ $(ALL_OBJS_O)
+
+
+$(LIB_TARGET_SHARED) : $(ALL_OBJS_O)
+	$(RM) $@
+	$(CC) -shared -o $@ $(ALL_OBJS_O)
 
 naive.doc : $(ALL_DOCS)
 	echo No documentation available.
@@ -92,8 +119,11 @@ naive.doc : $(ALL_DOCS)
 
 clean :
 	find . -name "*.di" | xargs $(RM)
-	$(RM) $(ALL_OBJS)
+	$(RM) $(ALL_OBJS_BC)
+	$(RM) $(ALL_OBJS_O)
 	$(RM) $(ALL_DOCS)
+
+clean-all: clean
 	$(RM) $(LIB_MASK)
 
 install :

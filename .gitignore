@@ -1,0 +1,3 @@
+*.bc
+*.o
+libtango-gc-naive.a
