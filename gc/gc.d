@@ -152,8 +152,6 @@ struct BlkInfo
 struct GC
 {
 
-// TODO: GC Lock
-
 private:
 
     /// List of free cells.
