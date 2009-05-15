@@ -18,7 +18,8 @@ package:
 /**
  * Small hack to define the string alias if not defined
  *
- * Tango don't define this alias in object.d, but Phobos 1 and 2 does.
+ * Tango doesn't define this alias in object.d, but Phobos (both 1 and 2)
+ * does.
  */
 /*
  * XXX: this (more general approach) doesn't work:

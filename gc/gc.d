@@ -3,23 +3,22 @@
  *
  * This module implements a Naive Garbage Collector. The idea behind this
  * implementation is to document all the bookkeeping and considerations that
- * has to be taken in order to implement a garbage collector for D.
+ * have to be taken in order to implement a garbage collector for D.
  *
- * The garbage collector algorithm itself is extremely simple so focus can be
- * held in the specifics of D, and not the algorithm. A completely naive mark
- * and sweep algorithm is used, with a recursive mark phase. The code is
- * extremely inefficient in order to keep the code clean and easy to read and
- * understand.
+ * The garbage collector algorithm itself is extremely simple to make it
+ * easier to focus on the specifics of D. A completely naive mark and sweep
+ * algorithm is used, with a recursive mark phase. The code is extremely
+ * inefficient in order to keep it clean, and easy to read and understand.
  *
- * The implementation is split in several modules to ease even more the
- * lecture. All architecture/compiler specific code is done in the arch module,
- * in order to avoid confusing version statements all over the places. The cell
- * module has all the code related to the memory cells header. dynarray is
- * another support module which holds the implementation of a simple dynamic
- * array used to store root pointers and ranges. The list module holds a simple
- * singly linked list (of cells) implementation to store the live and free
- * lists. Finally, the iface module is the one with the C interface to comply
- * with the Tango/Druntime GC specification.
+ * The implementation is split in several modules to ease the reading even
+ * more. All architecture/compiler specific code is done in the arch module,
+ * in order to avoid confusing version statements all over the places. The
+ * cell module has all the code related to the memory cells header. dynarray
+ * is another support module which holds the implementation of a simple
+ * dynamic array used to store root pointers and ranges. The list module holds
+ * a simple singly linked list (of cells) implementation to store the live and
+ * free lists. Finally, the iface module is the one with the C interface to
+ * comply with the Tango/Druntime GC specification.
  *
  * Copyright: Public Domain
  * License:   Public Domain
@@ -65,7 +64,7 @@ extern (C) void thread_scanAll(mark_function mark, void* stack_top=null);
 struct RootRange
 {
 
-    /// Start of the memory range
+    /// Beginning of the memory range
     void* from;
 
     /// End of the memory range
@@ -163,7 +162,7 @@ private:
     /// Single root pointers.
     DynArray!(void*) root_pointers;
 
-    /// Single root pointers.
+    /// Root ranges.
     DynArray!(RootRange) root_ranges;
 
     /**
@@ -195,7 +194,7 @@ private:
     }
 
     /**
-     * Marks all live data (pausing all threads)
+     * Mark all live data (pausing all threads)
      *
      * This methods start marking following all the known roots:
      *
@@ -251,8 +250,7 @@ private:
      * Wrapper for mark() over a range, needed by some runtime functions.
      *
      * This function is used as a delegate to be passed to rt_scanStaticData()
-     * and thread_scanAll(), because they expects a function taking
-     * 2 pointers.
+     * and thread_scanAll(), because they expect a function taking 2 pointers.
      *
      * This extremely inefficient on purpose. The goal of this implementation
      * is simplicity, nor performance.
@@ -269,7 +267,7 @@ private:
     }
 
     /**
-     * Marks all cells accessible from a pointer.
+     * Mark all cells accessible from a pointer.
      *
      * This is the mark algorithm itself. It's recursive and dumb as a log. No
      * care is taken in regards to stack overflows. This is the first example
@@ -398,7 +396,7 @@ public:
      * Run a GC collection in order to find unreferenced objects.
      *
      * This is the simplest stop-the-world mark-sweep algorithm ever. It first
-     * removes the mark bit from all the live cells, then it mark the cells
+     * removes the mark bit from all the live cells, then it marks the cells
      * that are reachable through the root set (static data, stack, registers
      * and custom root), and finally sweeps the live list looking for unmarked
      * cells to free.
@@ -444,10 +442,10 @@ public:
     /**
      * Get attributes associated to the cell pointed by ptr.
      *
-     * Attributes is a bitmap that can have theses values:
+     * Attributes is a bitmap that can have these values:
      *
      *  $(UL
-     *      $(LI 1: The object stored in the cell have to be finalized)
+     *      $(LI 1: The object stored in the cell has to be finalized)
      *      $(LI 2: The cell should not be scanned for pointers)
      *      $(LI 4: The cell should not be moved during a collection
      *           (unimplemented))
@@ -578,7 +576,7 @@ public:
      * returned. Otherwise a new cell is allocated using malloc() (this can
      * trigger a collection), the contents are moved and the old cell is freed.
      *
-     * attr are the same as malloc().
+     * attr has the same meaning as in malloc().
      */
     void* realloc(void* ptr, size_t size, uint attr=0)
     {
@@ -640,12 +638,12 @@ public:
      * Reserve memory to anticipate memory allocations.
      *
      * This implementation is really dumb, a single cell is allocated with
-     * size bytes. If 2 mallocs() follows a call to reserve(size), requesting
-     * size/2 bytes each, one allocation will be done still (and  half the
-     * memory of the first malloc will be wasted =) Since this is a trivial
+     * size bytes. If 2 malloc()s follow a call to reserve(size), requesting
+     * size/2 bytes each, one allocation will still be done (and half the
+     * memory of the first malloc will be wasted =). Since this is a trivial
      * implementation, we don't care about this.
      *
-     * The actual number of bytes reserver are returned, or 0 on error.
+     * The actual number of bytes reserved are returned, or 0 on error.
      */
     size_t reserve(size_t size)
     {
@@ -662,7 +660,7 @@ public:
     /**
      * Free unused memory.
      *
-     * This method tells the GC that a cell is not longer used. The GC don't
+     * This method tells the GC that a cell is not longer used. The GC doesn't
      * perform any connectivity check, if the cell was referenced by others,
      * nasty things will happen (much like C/C++).
      *
@@ -704,7 +702,7 @@ public:
     }
 
     /**
-     * Return the real size (capacity) for the cell pointed by ptr.
+     * Return the real size (capacity) for the cell pointed to by ptr.
      *
      * ptr should be the base address of a heap allocated object, interior
      * pointers are not supported (use addrOf() if you have an interior
@@ -722,7 +720,7 @@ public:
     }
 
     /**
-     * Get information about the cell pointed by ptr.
+     * Get information about the cell pointed to by ptr.
      *
      * ptr should be the base address of a heap allocated object, interior
      * pointers are not supported (use addrOf() if you have an interior
@@ -780,8 +778,8 @@ public:
     /**
      * Remove a root pointer from the root set.
      *
-     * ptr has to be previously registered using addRoot(), in other case the
-     * results of this method is undefined.
+     * ptr has to be previously registered using addRoot(), otherwise the
+     * results are undefined.
      *
      * See_Also: addRoot(), addRange(), removeRange()
      */
@@ -793,8 +791,8 @@ public:
     /**
      * Remove a root range from the root set.
      *
-     * ptr has to be previously registered using addRange(), in other case the
-     * results of this method is undefined.
+     * ptr has to be previously registered using addRange(), otherwise the
+     * results are undefined.
      *
      * See_Also: addRange(), addRoot(), removeRoot()
      */

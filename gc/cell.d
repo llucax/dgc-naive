@@ -55,7 +55,7 @@ enum BlkAttr : uint
 /**
  * Memory block (cell) header.
  *
- * All memory cells in the GC heap has this header.
+ * All memory cells in the GC heap have this header.
  */
 struct Cell
 {
@@ -82,7 +82,8 @@ struct Cell
     }
 
     /**
-     * Get a cell pointer for the cell that stores the object pointed by ptr.
+     * Get a cell pointer for the cell that stores the object pointed to by
+     * ptr.
      *
      * If ptr is null, null is returned.
      */
