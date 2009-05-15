@@ -533,6 +533,7 @@ public:
 
         // No luck still, allocate new memory
         cell = cast(Cell*) cstdlib.malloc(size + Cell.sizeof);
+        cell.capacity = 0; // so we can later tell it's new
         if (cell)
             goto success;
 
