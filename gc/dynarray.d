@@ -106,7 +106,7 @@ public:
             if (new_capacity == 0)
                 new_capacity = 4;
         // reallocate the memory with the new_capacity
-        T* new_data = cast(T*) realloc(this.data, new_capacity);
+        T* new_data = cast(T*) realloc(this.data, new_capacity * T.sizeof);
         if (new_data is null)
             onOutOfMemoryError();
         this.data = new_data;
