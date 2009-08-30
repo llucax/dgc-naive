@@ -604,8 +604,11 @@ public:
 
         // We need to move the cell because of the lack of capacity, find
         // a free cell with the requested capacity (at least)
-        Cell* new_cell = Cell.from_ptr(this.malloc(size));
-        assert (!(new_cell is null)); // out of memory is handled by malloc()
+        ptr = this.malloc(size, attr);
+        if (ptr is null) // in case onOutOfMemoryError didn't throw
+            return null;
+        Cell* new_cell = Cell.from_ptr(ptr);
+        assert (new_cell !is null);
 
         // Move cell attributes and contents
         new_cell.attr = cell.attr;
