@@ -37,6 +37,9 @@ import gc.arch: push_registers, pop_registers;
 
 // Standard imports
 import cstring = tango.stdc.string;
+import mman = tango.stdc.posix.sys.mman;
+// XXX: missing in Tango 0.99.8 for Linux
+extern (C) int mprotect(void*, size_t, int);
 
 // Debug imports
 
@@ -318,6 +321,10 @@ private:
                 this.live_list.unlink(cell);
                 if (cell.has_finalizer)
                     rt_finalize(cell.ptr, false);
+                // Forbid the mutator read/write cell data
+                int r = mprotect(cast(byte*) cell + 4096, cell.capacity,
+                        mman.PROT_NONE);
+                assert (r != -1);
                 this.free_list.link(cell);
             }
         }
@@ -541,6 +548,10 @@ public:
         return null;
 
     reuse:
+        // Allow the mutator to read/write cell data
+        int r = mprotect(cast(byte*) cell + 4096, cell.capacity,
+                mman.PROT_READ | mman.PROT_WRITE);
+        assert (r != -1);
         cell.size = size;
         cell.attr = cast(BlkAttr) attr;
 
@@ -654,6 +665,10 @@ public:
         auto cell = Cell.alloc(size);
         if (cell is null)
             return 0;
+        // Forbid the mutator read/write cell data
+        int r = mprotect(cast(byte*) cell + 4096, cell.capacity,
+                mman.PROT_NONE);
+        assert (r != -1);
         this.free_list.link(cell);
         return cell.capacity;
     }
@@ -676,6 +691,11 @@ public:
 
         auto cell = this.live_list.pop(ptr);
         assert (cell !is null);
+
+        // Forbid the mutator read/write cell data
+        int r = mprotect(cast(byte*) cell + 4096, cell.capacity,
+                mman.PROT_NONE);
+        assert (r != -1);
 
         this.free_list.link(cell);
     }

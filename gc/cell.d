@@ -16,6 +16,7 @@
 module gc.cell;
 
 import cstdlib = tango.stdc.stdlib;
+import mman = tango.stdc.posix.sys.mman;
 
 package:
 
@@ -97,10 +98,18 @@ struct Cell
      */
     static Cell* alloc(size_t size, uint attr = 0)
     {
-        auto cell = cast(Cell*) cstdlib.malloc(size + Cell.sizeof);
-        if (cell is null)
+        // The capacity is increased to the number of bytes used by the minimun
+        // number of pages needed to allocate the requested size.
+        size_t capacity = size + 4096 - size % 4096;
+        // Allocate one page for the cell header and as many pages as necessary
+        // for the cell data using mmap(2). Page size is assumed to be 4096.
+        auto ptr = mman.mmap(null, 4096 + capacity,
+                mman.PROT_READ | mman.PROT_WRITE,
+                mman.MAP_PRIVATE | mman.MAP_ANON, -1, 0);
+        if (ptr == mman.MAP_FAILED)
             return null;
-        cell.capacity = size;
+        auto cell = cast(Cell*) ptr;
+        cell.capacity = capacity;
         cell.size = size;
         cell.attr = cast(BlkAttr) attr;
         cell.marked = true;
@@ -111,7 +120,9 @@ struct Cell
     /// Free a cell allocated by Cell.alloc().
     static void free(Cell* cell)
     {
-        cstdlib.free(cell);
+        // Unmap the mmap(2)ed memory. The extra page (4096) is the cell header.
+        int r = mman.munmap(cell, 4096 + cell.capacity);
+        assert (r != -1);
     }
 
     /**
@@ -124,13 +135,15 @@ struct Cell
     {
         if (ptr is null)
             return null;
-        return cast(Cell*) (cast(byte*) ptr - Cell.sizeof);
+        // Subtract one page to the pointer to get the start of the cell header.
+        return cast(Cell*) (cast(byte*) ptr - 4096);
     }
 
     /// Get the base address of the object stored in the cell.
     void* ptr()
     {
-        return cast(void*) (cast(byte*) this + Cell.sizeof);
+        // Add one page to the header pointer to get the start of the cell data.
+        return cast(void*) (cast(byte*) this + 4096);
     }
 
     /// Return true if the cell should be finalized, false otherwise.
