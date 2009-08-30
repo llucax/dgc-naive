@@ -559,11 +559,12 @@ public:
      */
     void* calloc(size_t size, uint attr=0)
     {
+        if (size == 0)
+            return null;
+
         void* ptr = this.malloc(size, attr);
 
-        if (ptr is null)
-            onOutOfMemoryError();
-        else
+        if (ptr !is null) // in case onOutOfMemoryError didn't throw
             cstring.memset(ptr, 0, size);
 
         return ptr;
