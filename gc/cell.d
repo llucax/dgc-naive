@@ -77,6 +77,17 @@ struct Cell
     /// Next cell (this is used for free/live lists linking).
     Cell* next = null;
 
+    /**
+     * Address to the start of the malloc()ed memory block.
+     *
+     * This is mostly needed because memory should be aligned to the word
+     * size, so we have to adjust data pointers to start at an address
+     * multiple of the word size. Then, our header could not be at the start
+     * of the block. We need to keep the beginning of the block address to be
+     * able to free() it.
+     */
+    void* block_start = null;
+
     invariant()
     {
         assert (this.size > 0);
@@ -97,10 +108,15 @@ struct Cell
      */
     static Cell* alloc(size_t size, uint attr = 0)
     {
-        auto cell = cast(Cell*) cstdlib.malloc(size + Cell.sizeof);
-        if (cell is null)
+        size_t word_size = size_t.sizeof;
+        size_t block_size = size + Cell.sizeof + word_size;
+        auto block_start = cast(byte*) cstdlib.malloc(block_size + word_size);
+        if (block_start is null)
             return null;
-        cell.capacity = size;
+        byte* data_start = block_start + block_size - size - size % word_size;
+        auto cell = Cell.from_ptr(data_start);
+        cell.block_start = block_start;
+        cell.capacity = block_size - (data_start - block_start);
         cell.size = size;
         cell.attr = cast(BlkAttr) attr;
         cell.marked = true;
@@ -111,7 +127,7 @@ struct Cell
     /// Free a cell allocated by Cell.alloc().
     static void free(Cell* cell)
     {
-        cstdlib.free(cell);
+        cstdlib.free(cell.block_start);
     }
 
     /**
@@ -179,20 +195,19 @@ private:
 
     unittest // Cell
     {
-        auto N = 10;
-        auto size = N * size_t.sizeof;
+        auto size = 27;
         auto cell = Cell.alloc(size, BlkAttr.FINALIZE | BlkAttr.NO_SCAN);
         assert (cell !is null);
         assert (cell.ptr is cell + 1);
-        for (int i = 0; i < N; ++i) {
-            auto ptr = cast(size_t*) cell.ptr + i;
-            *ptr = i + N;
+        for (int i = 0; i < size; ++i) {
+            auto ptr = cast(ubyte*) cell.ptr + i;
+            *ptr = i + size;
         }
-        size_t i = N;
+        size_t i = size;
         foreach (void* ptr; *cell) {
-            assert (cast(size_t) ptr == i++);
+            for (int j = 0; j < size_t.sizeof; ++j)
+                assert ((cast(ubyte*) ptr)[j] == i++);
         }
-        assert (*(cast(size_t*) cell.ptr) == N);
         assert (cell.has_finalizer());
         assert (!cell.has_pointers());
         assert (cell is Cell.from_ptr(cell.ptr));
