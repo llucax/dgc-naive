@@ -455,7 +455,7 @@ public:
     uint getAttr(void* ptr)
     {
         auto cell = this.live_list.find(ptr);
-        if (cell)
+        if (cell !is null)
             return cell.attr;
         return 0;
     }
@@ -471,7 +471,7 @@ public:
     uint setAttr(void* ptr, uint attr)
     {
         auto cell = this.live_list.find(ptr);
-        if (cell) {
+        if (cell !is null) {
             auto old = cell.attr;
             cell.attr |= attr;
             return cell.attr;
@@ -490,7 +490,7 @@ public:
     uint clrAttr(void* ptr, uint attr)
     {
         auto cell = this.live_list.find(ptr);
-        if (cell) {
+        if (cell !is null) {
             auto old = cell.attr;
             cell.attr &= ~attr;
             return cell.attr;
@@ -518,7 +518,7 @@ public:
 
         // Find a free cell in the free list with enough space
         auto cell = this.free_list.pop(size);
-        if (cell)
+        if (cell !is null)
             goto reuse;
 
         // No room in the free list found, if the GC is enabled, trigger
@@ -526,13 +526,13 @@ public:
         if (!this.disabled) {
             this.collect();
             cell = this.free_list.pop(size);
-            if (cell)
+            if (cell !is null)
                 goto reuse;
         }
 
         // No luck still, allocate a new cell
         cell = Cell.alloc(size, attr);
-        if (cell)
+        if (cell !is null)
             goto link;
 
         // No memory
@@ -592,7 +592,7 @@ public:
         }
 
         auto cell = this.live_list.find(ptr);
-        assert (cell);
+        assert (cell !is null);
 
         // We have enough capacity already, just change the size
         if (cell.capacity >= size) {
@@ -675,7 +675,7 @@ public:
             return;
 
         auto cell = this.live_list.pop(ptr);
-        assert (cell);
+        assert (cell !is null);
 
         this.free_list.link(cell);
     }
@@ -696,7 +696,7 @@ public:
         }
 
         auto cell = this.live_list.find(&in_range);
-        if (cell)
+        if (cell !is null)
             return cell.ptr;
 
         return null;
@@ -715,7 +715,7 @@ public:
     size_t sizeOf(void* ptr)
     {
         auto cell = this.live_list.find(ptr);
-        if (cell)
+        if (cell !is null)
             return cell.capacity;
         return 0;
     }
@@ -734,7 +734,7 @@ public:
         BlkInfo blk_info;
 
         auto cell = this.live_list.find(ptr);
-        if (cell) {
+        if (cell !is null) {
             blk_info.base = cell.ptr;
             blk_info.size = cell.capacity;
             blk_info.attr = cell.attr;

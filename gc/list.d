@@ -37,7 +37,7 @@ struct List
     Cell* find(bool delegate(Cell*) predicate)
     {
         auto cell = this.first;
-        while (cell) {
+        while (cell !is null) {
             if (predicate(cell))
                 return cell;
             cell = cell.next;
@@ -75,12 +75,12 @@ struct List
     {
         Cell* prev = null;
         auto cell = this.first;
-        while (cell) {
+        while (cell !is null) {
             if (predicate(cell)) {
-                if (prev)
-                    prev.next = cell.next;
-                else
+                if (prev is null)
                     this.first = cell.next;
+                else
+                    prev.next = cell.next;
                 return cell;
             }
             prev = cell;
@@ -133,7 +133,7 @@ struct List
     {
         int result = 0;
         auto cell = this.first;
-        while (cell) {
+        while (cell !is null) {
             // this is necessary to allow removing a node while iterating
             auto next = cell.next;
             result = dg(cell);
@@ -156,7 +156,7 @@ private:
     unittest // List
     {
         List l;
-        assert (l.first == null);
+        assert (l.first is null);
         assert (l.find(cast(void*) null) is null);
         assert (l.find(cast(void*) &l) is null);
         Cell[5] cells;

@@ -153,19 +153,19 @@ private:
         DynArray!(int) array;
         assert (array.size == 0);
         assert (array.capacity == 0);
-        assert (array.data == null);
+        assert (array.data is null);
         foreach (x; array)
             assert (false, "there should be no elements in the array");
         array.append(5);
         assert (array.size == 1);
         assert (array.capacity >= 1);
-        assert (array.data);
+        assert (array.data !is null);
         foreach (x; array)
             assert (x == 5);
         array.append(6);
         assert (array.size == 2);
         assert (array.capacity >= 2);
-        assert (array.data);
+        assert (array.data !is null);
         int i = 0;
         foreach (x; array)
             assert (x == 5 + i++);
@@ -173,19 +173,19 @@ private:
         array.remove(5);
         assert (array.size == 1);
         assert (array.capacity >= 1);
-        assert (array.data);
+        assert (array.data !is null);
         foreach (x; array)
             assert (x == 6);
         array.expand(100);
         assert (array.size == 1);
         assert (array.capacity >= 100);
-        assert (array.data);
+        assert (array.data !is null);
         foreach (x; array)
             assert (x == 6);
         array.clear();
         assert (array.size == 0);
         assert (array.capacity == 0);
-        assert (array.data == null);
+        assert (array.data is null);
         foreach (x; array)
             assert (false, "there should be no elements in the array");
     }

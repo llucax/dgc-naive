@@ -182,7 +182,7 @@ private:
         auto N = 10;
         auto size = N * size_t.sizeof;
         auto cell = Cell.alloc(size, BlkAttr.FINALIZE | BlkAttr.NO_SCAN);
-        assert (cell);
+        assert (cell !is null);
         assert (cell.ptr is cell + 1);
         for (int i = 0; i < N; ++i) {
             auto ptr = cast(size_t*) cell.ptr + i;
