@@ -97,10 +97,13 @@ struct Cell
      */
     static Cell* alloc(size_t size, uint attr = 0)
     {
-        auto cell = cast(Cell*) cstdlib.malloc(size + Cell.sizeof);
+        size_t capacity = size;
+        if (size % size_t.sizeof) // allocate multiples of the word size
+            capacity += size_t.sizeof - size % size_t.sizeof;
+        auto cell = cast(Cell*) cstdlib.malloc(capacity + Cell.sizeof);
         if (cell is null)
             return null;
-        cell.capacity = size;
+        cell.capacity = capacity;
         cell.size = size;
         cell.attr = cast(BlkAttr) attr;
         cell.marked = true;
