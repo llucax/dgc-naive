@@ -37,6 +37,7 @@ import gc.arch: push_registers, pop_registers;
 
 // Standard imports
 import cstring = tango.stdc.string;
+import cstdlib = tango.stdc.stdlib;
 
 // Debug imports
 
@@ -318,6 +319,8 @@ private:
                 this.live_list.unlink(cell);
                 if (cell.has_finalizer)
                     rt_finalize(cell.ptr, false);
+                // Set the pattern to detect corruption
+                cstring.memset(cell.ptr, 0xca, cell.capacity);
                 this.free_list.link(cell);
             }
         }
@@ -541,6 +544,10 @@ public:
         return null;
 
     reuse:
+        // Check the pattern to detect corruption
+        for (size_t i = 0; i < cell.capacity; ++i)
+            if ((cast(ubyte*) cell.ptr)[i] != 0xca)
+                cstdlib.abort();
         cell.size = size;
         cell.attr = cast(BlkAttr) attr;
 
@@ -654,6 +661,8 @@ public:
         auto cell = Cell.alloc(size);
         if (cell is null)
             return 0;
+        // Set the pattern to detect corruption
+        cstring.memset(cell.ptr, 0xca, cell.capacity);
         this.free_list.link(cell);
         return cell.capacity;
     }
