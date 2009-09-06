@@ -15,6 +15,8 @@
 
 module gc.cell;
 
+import cstdlib = tango.stdc.stdlib;
+
 package:
 
 /**
@@ -82,6 +84,37 @@ struct Cell
     }
 
     /**
+     * Allocate a new cell.
+     *
+     * Allocate a new cell (asking for fresh memory to the OS). The cell is
+     * initialized with the provided size and attributes. The capacity can be
+     * larger than the requested size, though. The attribute marked is set to
+     * true (assuming the cell will be used as soon as allocated) and next is
+     * set to null.
+     *
+     * Returns a pointer to the new cell or null if it can't allocate new
+     * memory.
+     */
+    static Cell* alloc(size_t size, uint attr = 0)
+    {
+        auto cell = cast(Cell*) cstdlib.malloc(size + Cell.sizeof);
+        if (cell is null)
+            return null;
+        cell.capacity = size;
+        cell.size = size;
+        cell.attr = cast(BlkAttr) attr;
+        cell.marked = true;
+        cell.next = null;
+        return cell;
+    }
+
+    /// Free a cell allocated by Cell.alloc().
+    static void free(Cell* cell)
+    {
+        cstdlib.free(cell);
+    }
+
+    /**
      * Get a cell pointer for the cell that stores the object pointed to by
      * ptr.
      *
@@ -130,8 +163,6 @@ debug (UnitTest)
 
 private:
 
-    import tango.stdc.stdlib: malloc;
-
     unittest // op_apply_ptr_range()
     {
         size_t[10] v;
@@ -150,13 +181,9 @@ private:
     {
         auto N = 10;
         auto size = N * size_t.sizeof;
-        auto cell = cast(Cell*) malloc(size + Cell.sizeof);
+        auto cell = Cell.alloc(size, BlkAttr.FINALIZE | BlkAttr.NO_SCAN);
         assert (cell);
         assert (cell.ptr is cell + 1);
-        cell.size = size;
-        cell.capacity = size;
-        cell.attr = BlkAttr.FINALIZE | BlkAttr.NO_SCAN;
-        cell.marked = true;
         for (int i = 0; i < N; ++i) {
             auto ptr = cast(size_t*) cell.ptr + i;
             *ptr = i + N;

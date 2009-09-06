@@ -36,7 +36,6 @@ import gc.dynarray: DynArray;
 import gc.arch: push_registers, pop_registers;
 
 // Standard imports
-import cstdlib = tango.stdc.stdlib;
 import cstring = tango.stdc.string;
 
 // Debug imports
@@ -435,7 +434,7 @@ public:
     {
         foreach (cell; this.free_list) {
             this.free_list.unlink(cell);
-            cstdlib.free(cell);
+            Cell.free(cell);
         }
     }
 
@@ -520,7 +519,7 @@ public:
         // Find a free cell in the free list with enough space
         auto cell = this.free_list.pop(size);
         if (cell)
-            goto success;
+            goto reuse;
 
         // No room in the free list found, if the GC is enabled, trigger
         // a collection and try again
@@ -528,25 +527,24 @@ public:
             this.collect();
             cell = this.free_list.pop(size);
             if (cell)
-                goto success;
+                goto reuse;
         }
 
-        // No luck still, allocate new memory
-        cell = cast(Cell*) cstdlib.malloc(size + Cell.sizeof);
-        cell.capacity = 0; // so we can later tell it's new
+        // No luck still, allocate a new cell
+        cell = Cell.alloc(size, attr);
         if (cell)
-            goto success;
+            goto link;
 
         // No memory
         onOutOfMemoryError();
 
         return null;
 
-    success:
+    reuse:
         cell.size = size;
-        if (cell.capacity == 0) // fresh cell
-            cell.capacity = size;
         cell.attr = cast(BlkAttr) attr;
+
+    link:
         this.live_list.link(cell);
 
         return cell.ptr;
@@ -653,13 +651,11 @@ public:
     size_t reserve(size_t size)
     {
         assert (size > 0);
-        auto cell = cast(Cell*) cstdlib.malloc(size + Cell.sizeof);
-        if (!cell)
+        auto cell = Cell.alloc(size);
+        if (cell is null)
             return 0;
-        cell.size = size;
-        cell.capacity = size;
         this.free_list.link(cell);
-        return size;
+        return cell.capacity;
     }
 
     /**
