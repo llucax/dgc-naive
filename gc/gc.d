@@ -39,6 +39,7 @@ import gc.arch: push_registers, pop_registers;
 import cstring = tango.stdc.string;
 
 // Debug imports
+debug import tango.stdc.stdio: printf;
 
 /*
  * These are external functions coming from the D/Tango runtime. It's pretty
@@ -174,6 +175,18 @@ private:
      */
     uint disabled = 0;
 
+    /// Print the free and live lists.
+    debug (gc_collect) void print_lists(char* prefix)
+    {
+        printf("%sfree:", prefix);
+        foreach (cell; this.free_list)
+            printf(" %p", cell);
+        printf(" | live:");
+        foreach (cell; this.live_list)
+            printf(" %s%p", cell.marked ? "*\0".ptr : "\0".ptr, cell);
+        printf("\n");
+    }
+
     /**
      * Remove the mark bit to all the live cells.
      *
@@ -188,6 +201,7 @@ private:
      */
     void unmark()
     {
+        debug (gc_collect) printf("gc.unmark()\n");
         foreach (cell; this.live_list)
             cell.marked = false;
     }
@@ -230,17 +244,25 @@ private:
      */
     void mark_all()
     {
+        debug (gc_collect) printf("gc.mark_all()\n");
         void* stack_top;
         mixin (push_registers("stack_top"));
         thread_suspendAll();
+        debug (gc_collect) printf("gc.mark_all() - scanning static data\n");
         rt_scanStaticData(&mark_range);
+        debug (gc_collect) printf("gc.mark_all() - scanning threads stack\n");
         thread_scanAll(&mark_range, stack_top);
+        debug (gc_collect) printf("gc.mark_all() - scanning root pointers:");
         foreach (ptr; this.root_pointers) {
+            debug (gc_collect) printf(" %p", ptr);
             this.mark(ptr);
         }
+        debug (gc_collect) printf("\ngc.mark_all() - scanning root ranges:");
         foreach (range; this.root_ranges) {
+            debug (gc_collect) printf(" %p-%p", range.from, range.to);
             this.mark_range(range.from, range.to);
         }
+        debug (gc_collect) printf("\n");
         thread_resumeAll();
         mixin (pop_registers("stack_top"));
     }
@@ -261,6 +283,7 @@ private:
      */
     void mark_range(void* from, void* to)
     {
+        debug (gc_collect) printf("gc.mark_range(%p, %p)\n", from, to);
         foreach (ptr; RootRange(from, to))
             mark(ptr);
     }
@@ -283,11 +306,14 @@ private:
      */
     void mark(void* ptr)
     {
+        debug (gc_collect_extra) printf("gc.mark(%p)\n", ptr);
         Cell* cell = Cell.from_ptr(this.addrOf(ptr));
         if (cell is null)
             return;
+        debug (gc_collect) printf("gc.mark() - %p cell=%p\n", cell.ptr, cell);
         if (!cell.marked) {
             cell.marked = true;
+            debug (gc_collect) printf("gc.mark() - cell=%p marked\n", cell);
             if (cell.has_pointers) {
                 foreach (ptr; *cell)
                     mark(ptr);
@@ -313,14 +339,19 @@ private:
      */
     void sweep()
     {
+        debug (gc_collect) print_lists("gc.sweep() - ");
+        debug (gc_collect) printf("gc.sweep() - freed:");
         foreach (cell; this.live_list) {
             if (!cell.marked) {
+                debug (gc_collect) printf(" %p", cell);
                 this.live_list.unlink(cell);
                 if (cell.has_finalizer)
                     rt_finalize(cell.ptr, false);
                 this.free_list.link(cell);
             }
         }
+        debug (gc_collect) printf("\n");
+        debug (gc_collect) print_lists("gc.sweep() - ");
     }
 
 
@@ -513,6 +544,7 @@ public:
      */
     void* malloc(size_t size, uint attr=0)
     {
+        debug (gc_malloc) printf("gc.malloc(%u, %u)\n", size, attr);
         if (size == 0)
             return null;
 
@@ -520,6 +552,7 @@ public:
         auto cell = this.free_list.pop(size);
         if (cell !is null)
             goto reuse;
+        debug (gc_malloc) printf("gc.malloc() - no free cell available\n");
 
         // No room in the free list found, if the GC is enabled, trigger
         // a collection and try again
@@ -528,12 +561,14 @@ public:
             cell = this.free_list.pop(size);
             if (cell !is null)
                 goto reuse;
+            debug (gc_malloc) printf("gc.malloc() - after collection\n");
         }
 
         // No luck still, allocate a new cell
         cell = Cell.alloc(size, attr);
         if (cell !is null)
             goto link;
+        debug (gc_malloc) printf("gc.malloc() - can't malloc() from the OS\n");
 
         // No memory
         onOutOfMemoryError();
@@ -546,6 +581,9 @@ public:
 
     link:
         this.live_list.link(cell);
+
+        debug (gc_malloc) printf("gc.malloc() - %p[cell=%p]\n", cell.ptr, cell);
+        debug (gc_malloc) print_lists("gc.malloc() - ");
 
         return cell.ptr;
     }
@@ -580,6 +618,7 @@ public:
      */
     void* realloc(void* ptr, size_t size, uint attr=0)
     {
+        debug (gc_malloc) printf("gc.realloc(%p, %u, %u)\n", ptr, size, attr);
 
         // Undercover malloc()
         if (ptr is null)
@@ -596,6 +635,9 @@ public:
 
         // We have enough capacity already, just change the size
         if (cell.capacity >= size) {
+            debug (gc_malloc)
+                printf("gc.realloc() - cell has %zu capacity, no need to "
+                        "realloc\n", cell.capacity);
             cell.size = size;
             return cell.ptr;
         }
@@ -671,6 +713,8 @@ public:
      */
     void free(void* ptr)
     {
+        debug (gc_malloc) printf("gc.free(%p)\n", ptr);
+
         if (ptr is null)
             return;
 

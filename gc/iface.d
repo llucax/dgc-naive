@@ -19,6 +19,7 @@ private {
 
     // Standard imports
     import tango.stdc.stdlib;
+    debug (gc_iface) import tango.stdc.stdio;
 
     /// GC implementation instance.
     GC gc;
@@ -49,6 +50,7 @@ private {
  */
 extern (C) void gc_init()
 {
+    debug (gc_iface) printf("gc_init()\n");
     lock = GCLock.classinfo;
     gc.init();
 }
@@ -61,6 +63,7 @@ extern (C) void gc_init()
  */
 extern (C) void gc_term()
 {
+    debug (gc_iface) printf("gc_term()\n");
     gc.term();
 }
 
@@ -81,6 +84,7 @@ extern (C) void gc_term()
  */
 extern (C) void gc_enable()
 {
+    debug (gc_iface) printf("gc_enable()\n");
     synchronized (lock)
         gc.enable();
 }
@@ -92,6 +96,7 @@ extern (C) void gc_enable()
  */
 extern (C) void gc_disable()
 {
+    debug (gc_iface) printf("gc_disable()\n");
     synchronized (lock)
         gc.disable();
 }
@@ -104,6 +109,7 @@ extern (C) void gc_disable()
  */
 extern (C) void gc_collect()
 {
+    debug (gc_iface) printf("gc_collect()\n");
     synchronized (lock)
         gc.collect();
 }
@@ -119,6 +125,7 @@ extern (C) void gc_collect()
  */
 extern (C) void gc_minimize()
 {
+    debug (gc_iface) printf("gc_minimize()\n");
     synchronized (lock)
         gc.minimize();
 }
@@ -142,6 +149,7 @@ extern (C) void gc_minimize()
  */
 extern (C) uint gc_getAttr(void* ptr)
 {
+    debug (gc_iface) printf("gc_getAttr(%p)\n", ptr);
     synchronized (lock)
         return gc.getAttr(ptr);
 }
@@ -156,6 +164,7 @@ extern (C) uint gc_getAttr(void* ptr)
  */
 extern (C) uint gc_setAttr(void* ptr, uint attr)
 {
+    debug (gc_iface) printf("gc_setAttr(%p, %u)\n", ptr, attr);
     synchronized (lock)
         return gc.setAttr(ptr, attr);
 }
@@ -170,6 +179,7 @@ extern (C) uint gc_setAttr(void* ptr, uint attr)
  */
 extern (C) uint gc_clrAttr(void* ptr, uint attr)
 {
+    debug (gc_iface) printf("gc_clrAttr(%p, %u)\n", ptr, attr);
     synchronized (lock)
         return gc.clrAttr(ptr, attr);
 }
@@ -181,6 +191,7 @@ extern (C) uint gc_clrAttr(void* ptr, uint attr)
  */
 extern (C) void* gc_malloc(size_t size, uint attr=0)
 {
+    debug (gc_iface) printf("gc_malloc(%u, %u)\n", size, attr);
     synchronized (lock)
         return gc.malloc(size, attr);
 }
@@ -192,6 +203,7 @@ extern (C) void* gc_malloc(size_t size, uint attr=0)
  */
 extern (C) void* gc_calloc(size_t size, uint attr=0)
 {
+    debug (gc_iface) printf("gc_calloc(%u, %u)\n", size, attr);
     synchronized (lock)
         return gc.calloc(size, attr);
 }
@@ -211,6 +223,7 @@ extern (C) void* gc_calloc(size_t size, uint attr=0)
  */
 extern (C) void* gc_realloc(void* ptr, size_t size, uint attr=0)
 {
+    debug (gc_iface) printf("gc_realloc(%p, %u, %u)\n", ptr, size, attr);
     synchronized (lock)
         return gc.realloc(ptr, size, attr);
 }
@@ -227,6 +240,7 @@ extern (C) void* gc_realloc(void* ptr, size_t size, uint attr=0)
  */
 extern (C) size_t gc_extend(void* ptr, size_t min_size, size_t max_size)
 {
+    debug (gc_iface) printf("gc_extend(%p, %u, %u)\n", ptr, min_size, max_size);
     synchronized (lock)
         return gc.extend(ptr, min_size, max_size);
 }
@@ -241,6 +255,7 @@ extern (C) size_t gc_extend(void* ptr, size_t min_size, size_t max_size)
  */
 extern (C) size_t gc_reserve(size_t size)
 {
+    debug (gc_iface) printf("gc_reserve(%u)\n", size);
     synchronized (lock)
         return gc.reserve(size);
 }
@@ -258,6 +273,7 @@ extern (C) size_t gc_reserve(size_t size)
  */
 extern (C) void gc_free(void* ptr)
 {
+    debug (gc_iface) printf("gc_free(%p)\n", ptr);
     synchronized (lock)
         gc.free(ptr);
 }
@@ -269,6 +285,7 @@ extern (C) void gc_free(void* ptr)
  */
 extern (C) void* gc_addrOf(void* ptr)
 {
+    debug (gc_iface) printf("gc_addrOf(%p)\n", ptr);
     synchronized (lock)
         return gc.addrOf(ptr);
 }
@@ -285,6 +302,7 @@ extern (C) void* gc_addrOf(void* ptr)
  */
 extern (C) size_t gc_sizeOf(void* ptr)
 {
+    debug (gc_iface) printf("gc_sizeOf(%p)\n", ptr);
     synchronized (lock)
         return gc.sizeOf(ptr);
 }
@@ -300,6 +318,7 @@ extern (C) size_t gc_sizeOf(void* ptr)
  */
 extern (C) BlkInfo gc_query(void* ptr)
 {
+    debug (gc_iface) printf("gc_query(%p)\n", ptr);
     synchronized (lock)
         return gc.query(ptr);
 }
@@ -315,6 +334,7 @@ extern (C) BlkInfo gc_query(void* ptr)
  */
 extern (C) void gc_addRoot(void* ptr)
 {
+    debug (gc_iface) printf("gc_addRoot(%p)\n", ptr);
     synchronized (lock)
         gc.addRoot(ptr);
 }
@@ -330,6 +350,7 @@ extern (C) void gc_addRoot(void* ptr)
  */
 extern (C) void gc_addRange(void* ptr, size_t size)
 {
+    debug (gc_iface) printf("gc_addRange(%p, %u)\n", ptr, size);
     synchronized (lock)
         gc.addRange(ptr, size);
 }
@@ -344,6 +365,7 @@ extern (C) void gc_addRange(void* ptr, size_t size)
  */
 extern (C) void gc_removeRoot(void* ptr)
 {
+    debug (gc_iface) printf("gc_removeRoot(%p)\n", ptr);
     synchronized (lock)
         gc.removeRoot(ptr);
 }
@@ -358,6 +380,7 @@ extern (C) void gc_removeRoot(void* ptr)
  */
 extern (C) void gc_removeRange(void* ptr)
 {
+    debug (gc_iface) printf("gc_removeRange(%p)\n", ptr);
     synchronized (lock)
         gc.removeRange(ptr);
 }
